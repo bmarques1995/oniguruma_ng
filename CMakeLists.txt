@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.1...3.5)
-project(oniguruma
+project(oniguruma_ng
   VERSION 6.9.10
   LANGUAGES C)
 
 set(PACKAGE onig)
 set(PACKAGE_VERSION ${PROJECT_VERSION})
 
+option(ONIG_COMPAT_API "Naming compatible with oniguruma" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(ENABLE_POSIX_API  "Include POSIX API" OFF)
 option(ENABLE_BINARY_COMPATIBLE_POSIX_API  "Include Binary compatible POSIX API" OFF)
@@ -15,6 +16,11 @@ option(INSTALL_EXAMPLES "Install examples" OFF)
 option(BUILD_TEST "Build tests" ON)
 if(MSVC)
   option(MSVC_STATIC_RUNTIME "Build with static runtime" OFF)
+endif()
+
+set(ONIG_NAME "oniguruma_ng")
+if(ONIG_COMPAT_API)
+  set(ONIG_NAME "oniguruma")
 endif()
 
 set(USE_CRNL_AS_LINE_TERMINATOR 0)
@@ -87,12 +93,17 @@ if(ENABLE_STATISTICS)
   add_definitions("-DONIG_DEBUG_STATISTICS")
 endif()
 
-add_library(onig ${_SRCS})
-target_include_directories(onig PUBLIC
+set(LIB_NAME "onig_ng")
+if(ONIG_COMPAT_API)
+  set(LIB_NAME "onig")
+endif()
+
+add_library(${LIB_NAME} ${_SRCS})
+target_include_directories(${LIB_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
 
-target_compile_definitions(onig PUBLIC
+target_compile_definitions(${LIB_NAME} PUBLIC
   $<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:ONIG_STATIC>)
 
 if(BUILD_SHARED_LIBS)
@@ -103,17 +114,17 @@ if(BUILD_SHARED_LIBS)
   string(REGEX REPLACE "^([0-9]+):([0-9]+):([0-9]+)" "\\2" LTREVISION ${LTVERSION})
   string(REGEX REPLACE "^([0-9]+):([0-9]+):([0-9]+)" "\\3" LTAGE ${LTVERSION})
   math(EXPR ONIG_SOVERSION "${LTCURRENT} - ${LTAGE}")
-  set_target_properties(onig PROPERTIES
+  set_target_properties(${LIB_NAME} PROPERTIES
       SOVERSION "${ONIG_SOVERSION}"
       VERSION "${ONIG_SOVERSION}.${LTAGE}.${LTREVISION}")
 endif()
 
 if(MSVC)
-  target_compile_options(onig PRIVATE
+  target_compile_options(${LIB_NAME} PRIVATE
 	#/W4
 	)
   if(MSVC_STATIC_RUNTIME)
-	target_compile_options(onig PRIVATE
+	target_compile_options(${LIB_NAME} PRIVATE
 	  $<$<CONFIG:Release>:/MT>
 	  $<$<CONFIG:Debug>:/MTd>
 	  $<$<CONFIG:MinSizeRel>:/MT>
@@ -122,12 +133,12 @@ if(MSVC)
   endif()
   if(MSVC_VERSION LESS_EQUAL "1800")
     # <= VS2013
-    target_compile_definitions(onig PRIVATE
+    target_compile_definitions(${LIB_NAME} PRIVATE
       -Dinline=__inline
       )
   endif()
 elseif(CMAKE_COMPILER_IS_GNUCC)
-  target_compile_options(onig PRIVATE
+  target_compile_options(${LIB_NAME} PRIVATE
 	-Wall
 	)
 endif()
@@ -186,7 +197,7 @@ endif()
 #   * header location after install: <prefix>/include/
 #   * headers can be included by C code `#include <oniguruma.h>`
 install(
-    TARGETS onig
+    TARGETS ${LIB_NAME}
     EXPORT "${TARGETS_EXPORT_NAME}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -243,11 +254,11 @@ endif()
 
 # pkg-config
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/oniguruma.pc.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/oniguruma.pc @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/oniguruma_ng.pc.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/${ONIG_NAME}.pc @ONLY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/onig-config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/onig-config @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/oniguruma.pc
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${ONIG_NAME}.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/onig-config
